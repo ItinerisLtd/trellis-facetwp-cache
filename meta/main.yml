@@ -1,0 +1,18 @@
+---
+galaxy_info:
+  namespace: itinerisltd
+  role_name: trellis_facetwp_cache
+  author: Lee Hanbury-Pickett
+  description: Persist the FacetWP Cache db.php drop-in across Trellis deploys
+  company: ItinerisLtd
+  license: MIT
+  min_ansible_version: '2.10'
+  platforms:
+    - name: Ubuntu
+      versions:
+        - all
+  galaxy_tags:
+    - facetwp
+    - trellis
+    - wordpress
+dependencies: []

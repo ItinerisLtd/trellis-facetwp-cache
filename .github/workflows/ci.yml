@@ -1,0 +1,34 @@
+---
+name: CI
+
+# yamllint disable-line rule:truthy
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+
+      - name: Run ansible-lint
+        uses: ansible/ansible-lint@b74fb6f73d234bf92672372cb1c10768e4018d16  # main
+
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+
+      - name: Install Ansible
+        run: python3 -m pip install ansible-core
+
+      - name: Run the role tests
+        run: ansible-playbook -i 'localhost,' -c local tests/test.yml
