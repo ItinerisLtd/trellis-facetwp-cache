@@ -1,0 +1,42 @@
+---
+# Persists the FacetWP Cache add-on's `db.php` drop-in across Trellis releases.
+#
+# The add-on only creates `db.php` on activation, as a symlink into one specific release.
+# A fresh release therefore never has it, and the symlink dangles once that release is pruned.
+#
+# This file stores the real `db.php` in `shared/facetwp-cache-db.php` and appends it to `project_shared_children`,
+# so the share step symlinks it into every release as `db.php`, the only name WordPress loads.
+# It must run in the `deploy_share_before` hook, so the `touch` Trellis does for `type: file` never leaves an empty file.
+- name: Check for the FacetWP Cache add-on
+  ansible.builtin.stat:
+    path: "{{ deploy_helper.new_release_path }}/{{ project_public_path }}/app/plugins/facetwp-cache/db.php"
+  register: trellis_facetwp_cache_dropin
+
+- name: Persist the FacetWP Cache db.php drop-in
+  when: trellis_facetwp_cache_dropin.stat.exists
+  vars:
+    trellis_facetwp_cache_shared_file: facetwp-cache-db.php
+    trellis_facetwp_cache_shared_child:
+      path: "{{ project_public_path }}/app/db.php"
+      src: "{{ trellis_facetwp_cache_shared_file }}"
+      type: file
+      mode: '0644'
+  block:
+    - name: Refuse to append when the site overrides project_shared_children
+      ansible.builtin.fail:
+        msg: >-
+          `wordpress_sites.{{ site }}.project_shared_children` takes precedence over the global variable,
+          so the FacetWP Cache db.php entry would be ignored. Add it to that list instead.
+      when: project.project_shared_children is defined
+
+    - name: Add db.php to project_shared_children
+      ansible.builtin.set_fact:  # noqa: var-naming[no-role-prefix]
+        project_shared_children: "{{ project_shared_children + [trellis_facetwp_cache_shared_child] }}"
+      when: trellis_facetwp_cache_shared_child.path not in (project_shared_children | map(attribute='path') | list)
+
+    - name: Store the add-on's db.php in the shared directory
+      ansible.builtin.copy:
+        src: "{{ deploy_helper.new_release_path }}/{{ project_public_path }}/app/plugins/facetwp-cache/db.php"
+        dest: "{{ deploy_helper.shared_path }}/{{ trellis_facetwp_cache_shared_file }}"
+        remote_src: true
+        mode: '0644'
