@@ -21,18 +21,36 @@
       src: "{{ trellis_facetwp_cache_shared_file }}"
       type: file
       mode: '0644'
+    trellis_facetwp_cache_existing: >-
+      {{ project.project_shared_children | default(project_shared_children)
+      | selectattr('path', 'equalto', trellis_facetwp_cache_shared_child.path) | list }}
   block:
-    - name: Refuse to append when the site overrides project_shared_children
+    - name: Refuse when the site overrides project_shared_children without the db.php entry
       ansible.builtin.fail:
         msg: >-
           `wordpress_sites.{{ site }}.project_shared_children` takes precedence over the global variable,
-          so the FacetWP Cache db.php entry would be ignored. Add it to that list instead.
-      when: project.project_shared_children is defined
+          so the FacetWP Cache db.php entry would be ignored.
+          Add the entry to that list, or remove the override.
+      when:
+        - project.project_shared_children is defined
+        - trellis_facetwp_cache_existing | length == 0
+
+    - name: Refuse when another shared child already uses the db.php path
+      ansible.builtin.fail:
+        msg: >-
+          `project_shared_children` already has an entry for `{{ trellis_facetwp_cache_shared_child.path }}`
+          that does not use `src: {{ trellis_facetwp_cache_shared_file }}` with `type: file`,
+          so Trellis would not link the stored loader.
+      when:
+        - trellis_facetwp_cache_existing | length > 0
+        - >-
+          (trellis_facetwp_cache_existing | first).src | default('') != trellis_facetwp_cache_shared_file
+          or (trellis_facetwp_cache_existing | first).type | default('') != 'file'
 
     - name: Add db.php to project_shared_children
       ansible.builtin.set_fact:  # noqa: var-naming[no-role-prefix]
         project_shared_children: "{{ project_shared_children + [trellis_facetwp_cache_shared_child] }}"
-      when: trellis_facetwp_cache_shared_child.path not in (project_shared_children | map(attribute='path') | list)
+      when: trellis_facetwp_cache_existing | length == 0
 
     - name: Store the add-on's db.php in the shared directory
       ansible.builtin.copy:

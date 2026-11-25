@@ -71,8 +71,8 @@ The live release briefly uses the new `db.php` with its older plugin code, and a
 The file is a short loader, so this is harmless in practice.
 
 If a site sets `project_shared_children` under its own `wordpress_sites` entry, Trellis ignores the global variable and the role cannot append to it.
-The role fails with a message in that case.
-Add the `db.php` entry to the site's own list instead:
+The role fails with a message unless that list already contains the entry below.
+Add it to the site's own list, or remove the override:
 
 ```yaml
 - path: "{{ project_public_path }}/app/db.php"

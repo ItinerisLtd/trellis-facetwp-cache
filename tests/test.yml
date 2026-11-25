@@ -111,6 +111,35 @@
             that:
               - "'takes precedence' in ansible_failed_result.msg"
 
+    - name: A site-level project_shared_children with the db.php entry is accepted
+      ansible.builtin.include_tasks: ../tasks/main.yml  # noqa: no-relative-paths
+      vars:
+        project:
+          project_shared_children:
+            - path: web/app/db.php
+              src: facetwp-cache-db.php
+              type: file
+
+    - name: A conflicting db.php shared child is refused
+      block:
+        - name: Run the role tasks with a conflicting entry
+          ansible.builtin.include_tasks: ../tasks/main.yml  # noqa: no-relative-paths
+          vars:
+            project:
+              project_shared_children:
+                - path: web/app/db.php
+                  src: other-db.php
+                  type: file
+
+        - name: Fail the test, because the role did not refuse
+          ansible.builtin.fail:
+            msg: The role should refuse a conflicting db.php shared child.
+      rescue:
+        - name: Check the role refused, and not something else
+          ansible.builtin.assert:
+            that:
+              - "'does not use' in ansible_failed_result.msg"
+
     - name: Remove the temporary project
       ansible.builtin.file:
         path: "{{ test_root.path }}"
